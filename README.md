@@ -1,26 +1,61 @@
-# Rocket.Chat — локальные патчи
+# Rocket.Chat upload filename fix (Docker)
 
-Здесь хранятся доработки для развёртывания **Rocket.Chat** (**Docker**): каталог **`Patched_file/docker-patch/`** (файлы **`app.js`**, **`Dockerfile`**), скрипт **`patch_appjs_upload_names.py`**.
+Rocket.Chat shows the **client’s raw filename** on attachment headers (mobile and desktop). For non-ASCII names—Cyrillic, spaces, odd punctuation—that looks broken and is awkward to share.
 
-Каноническое зеркало для выкладки и шаринга — репозиторий **`Rocket_Chat_fix_image`** (создайте пустой репозиторий с таким имени на **GitHub** / **GitLab** и запушьте содержимое этого каталога как корень ветки **`main`**, см. ниже).
+This repo ships a **small server-side patch** to the bundled `app.js`: transliterate Cyrillic to Latin, fold spaces and junk characters to hyphens, and keep **upload validation + image pipeline** intact. **Tested on Rocket.Chat `8.3.2`** (official `registry.rocket.chat/rocketchat/rocket.chat:8.3.2` image).
 
-Удалённый хост и **SSH**-алиас для сервиса — в **`%USERPROFILE%\.ssh\config`** (часто имя **`Rocket_chat`**; см. **`Mikrotik/AGENTS.md`** и **`../docs/servers-inventory.md`**).
+**Suggested GitHub “About” line (copy-paste):**  
+`Server patch for Rocket.Chat Docker: normalize attachment filenames (Cyrillic → Latin). Works on 8.3.x bundle.`
 
-Общие правила доступа: **`../docs/ssh-and-access.md`**.
+**Topics to add:** `rocketchat`, `docker`, `upload`, `filename`, `i18n`, `nodejs`
 
-**Пошаговая процедура патча и сборки образа** — **[`PATCHING.md`](./PATCHING.md)** (версии `app.js`, бэкап, `docker build`, проверки; подтверждённая связка **8.3.2** и поведение имён в UI).
+---
 
-### Публикация в `Rocket_Chat_fix_image`
+## What changes
 
-Из каталога **`Rocket_chat`** (он же корень репозитория с патчами):
+| Before | After (example) |
+|--------|------------------|
+| Something like `ТЕСТ (В!!) () 00() всратос~.jpg` in the attachment title | A single safe string, e.g. `test-v-00-vsratos-.jpg` (lowercase, hyphens) |
 
-```powershell
-git init
-git add -A
-git commit -m "Rocket.Chat 8.3.2: патч нормализации имён файлов (uploads, sendFileMessage, livechat)"
-git branch -M main
-git remote add origin https://github.com/Reactobus/Rocket_Chat_fix_image.git
-git push -u origin main
-```
+Old messages keep their stored titles; **send a new file** to verify after deploy.
 
-При уже существующем **`origin`** используйте **`git remote set-url origin …`** и затем **`git push`**. Файл **`Patched_file/docker-patch/app.js`** очень большой (бандл целиком); при желании не хранить его в git раскомментируйте соответствующую строку в **`.gitignore`** и оставляйте в репозитории только **`Dockerfile`**, **`patch_appjs_upload_names.py`** и документацию — эталонный **`app.js`** тогда каждый раз извлекают из образа (см. **`PATCHING.md`**).
+---
+
+## What’s in the box
+
+| Path | Role |
+|------|------|
+| [`patch_appjs_upload_names.py`](./patch_appjs_upload_names.py) | Idempotent edits to a **vanilla** `app.js` from the same image tag you run (three hooks: `uploadsOnValidate`, `sendFileMessage` after `updateFileComplete`, visitor livechat). |
+| [`Patched_file/docker-patch/Dockerfile`](./Patched_file/docker-patch/Dockerfile) | `FROM` your server image + `COPY` patched `app.js` into the bundle path. |
+| [`docs/patching.md`](./docs/patching.md) | Full deploy procedure: extract `app.js`, run the script, build image, `docker compose`, checks, pitfalls. |
+
+The checked-in `Patched_file/docker-patch/app.js` is a **large** reference bundle; you can stop tracking it and rely on extracting from the image each time—see [`.gitignore`](./.gitignore).
+
+---
+
+## Quick use
+
+1. **Backup MongoDB** before you touch production.
+2. Pull the **exact** Rocket.Chat image tag you use, extract `app.js` from  
+   `/app/bundle/programs/server/app/app.js` (`docker create` + `docker cp`).
+3. Run (Python 3):
+
+   ```bash
+   python3 patch_appjs_upload_names.py /path/to/vanilla-app.js
+   ```
+
+4. Put patched `app.js` next to the Dockerfile, build a derived image (e.g. `:8.3.2-patched`), point `docker-compose.yml` at it, recreate the `rocketchat` service. Use `docker build --no-cache` if the old layer masks a new `app.js`.
+
+5. Confirm logs show `SERVER RUNNING`, then upload a **new** file with a messy name and check the attachment title.
+
+Details, edge cases, and upgrade notes: **[docs/patching.md](docs/patching.md)**.
+
+---
+
+## License
+
+Treat the **patch script** as MIT-level permissive unless you add your own file; **Rocket.Chat** and its bundle remain under their upstream licenses. If you ship a derivative image, comply with Rocket.Chat’s terms and your registry rules.
+
+---
+
+*Maintained for our own Docker deploy; if it helps you, open an issue with your **Rocket.Chat version** and **image tag** when something drifts after an upgrade.*
