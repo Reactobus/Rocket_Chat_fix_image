@@ -2,23 +2,23 @@
 
 Use this when you run Rocket.Chat from Docker and want **normalized attachment filenames** (see the [root README](../README.md) for context).
 
-**Verified stack:** Rocket.Chat **8.3.2**, `patch_appjs_upload_names.py` with three anchored insertions: `uploadsOnValidate`, post–`Uploads.updateFileComplete` in `sendFileMessage`, and visitor livechat. Older messages in MongoDB are unchanged; test with a **new** upload.
+**Verified stack:** Rocket.Chat **8.3.2**, `patch_appjs_upload_names.py` with three anchored insertions: `uploadsOnValidate`, after `Uploads.updateFileComplete` in `sendFileMessage`, visitor livechat. Older messages in MongoDB are unchanged; test with a **new** upload.
 
 ---
 
 ## Rules
 
-1. **`app.js` must match your image tag** — the bundle is built for one release; don’t drop in another minor’s file.
+1. **`app.js` must match your image tag** - the bundle is built for one release; don’t drop in another minor’s file.
 2. **Patch a vanilla extract** from the **same** image the server runs.
-3. **Don’t replace the entire `uploadsOnValidate` method** — the image pipeline (`tmpFile` / Sharp / etc.) must stay after the first `if (!file.type …)`. The script only prepends logic at the needle; if needles move in a newer Rocket.Chat, adjust `NEEDLE_*` in the script or patch by hand following the same idea.
+3. **Don’t replace the entire `uploadsOnValidate` method** - the image pipeline (`tmpFile` / Sharp / etc.) must stay after the first `if (!file.type …)`. The script only prepends logic at the needle; if needles move in a newer Rocket.Chat, adjust `NEEDLE_*` in the script or patch by hand following the same idea.
 4. **Back up MongoDB** before production changes.
 
 ---
 
 ## Repo layout
 
-- `patch_appjs_upload_names.py` — run against vanilla `app.js`.
-- `Patched_file/docker-patch/Dockerfile` — example `FROM` + `COPY`.
+- `patch_appjs_upload_names.py` - run against vanilla `app.js`.
+- `Patched_file/docker-patch/Dockerfile` - example `FROM` + `COPY`.
 - Optional reference `app.js` in tree (heavy); you can omit it from git and extract per build.
 
 ---
@@ -29,7 +29,7 @@ Paths vary; adapt to your host layout and Compose file location.
 
 ### 1) Inventory
 
-- `docker ps -a` (or `sudo docker …`) — note the **full image name:tag** for Rocket.Chat.
+- `docker ps -a` (or `sudo docker …`) - note the **full image name:tag** for Rocket.Chat.
 - Find `docker-compose.yml` and MongoDB service names.
 
 ### 2) Backup database
@@ -66,7 +66,7 @@ Copy the result to your build dir (e.g. `docker-patch-build/app.js`).
 python3 patch_appjs_upload_names.py /tmp/rc_app.js
 ```
 
-Re-run against a fresh copy if edits go wrong—don’t accumulate half-patches.
+Re-run against a fresh copy if edits go wrong - don’t accumulate half-patches.
 
 The script skips work if markers / `CYR_MAP` already present (idempotent sections).
 
@@ -109,7 +109,7 @@ docker compose up -d rocketchat --force-recreate
 |--------|----------------|
 | No visible change | Old messages unchanged; test **new** upload. Client cache: hard-reload or retry on mobile. |
 | Patch “does nothing” on upgrade | Bundle layout changed; update `NEEDLE_*` in the script or re-locate hooks in the new `app.js`. |
-| Broken image previews / Sharp / EXIF | Full `uploadsOnValidate` was replaced or bundle isn’t vanilla—re-extract from the official image and patch only at the needles. |
+| Broken image previews / Sharp / EXIF | Full `uploadsOnValidate` was replaced or bundle isn’t vanilla - re-extract from the official image and patch only at the needles. |
 | Image still old after editing `app.js` | Rebuild with `--no-cache`. |
 
 ---
@@ -123,4 +123,4 @@ docker compose up -d rocketchat --force-recreate
 
 ## Upgrade loop
 
-For each Rocket.Chat bump: `docker pull` new tag → extract fresh `app.js` → adjust script needles if needed → rebuild `-patched` image → update Compose → recreate container → verify.
+For each Rocket.Chat bump: `docker pull` new tag - extract fresh `app.js` - adjust script needles if needed - rebuild `-patched` image - update Compose - recreate container - verify.

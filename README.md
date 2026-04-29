@@ -1,11 +1,11 @@
 # Rocket.Chat upload filename fix (Docker)
 
-Rocket.Chat shows the **client’s raw filename** on attachment headers (mobile and desktop). For non-ASCII names—Cyrillic, spaces, odd punctuation—that looks broken and is awkward to share.
+Rocket.Chat shows the **client’s raw filename** on attachment headers (mobile and desktop). For non-ASCII names - Cyrillic, spaces, odd punctuation - that looks broken and is awkward to share.
 
 This repo ships a **small server-side patch** to the bundled `app.js`: transliterate Cyrillic to Latin, fold spaces and junk characters to hyphens, and keep **upload validation + image pipeline** intact. **Tested on Rocket.Chat `8.3.2`** (official `registry.rocket.chat/rocketchat/rocket.chat:8.3.2` image).
 
 **Suggested GitHub “About” line (copy-paste):**  
-`Server patch for Rocket.Chat Docker: normalize attachment filenames (Cyrillic → Latin). Works on 8.3.x bundle.`
+`Server patch for Rocket.Chat Docker: normalize attachment filenames (Cyrillic - Latin). Works on 8.3.x bundle.`
 
 **Topics to add:** `rocketchat`, `docker`, `upload`, `filename`, `i18n`, `nodejs`
 
@@ -31,7 +31,7 @@ If you add before/after screenshots, drop them under `docs/images/` and link the
 | [`Patched_file/docker-patch/Dockerfile`](./Patched_file/docker-patch/Dockerfile) | `FROM` your server image + `COPY` patched `app.js` into the bundle path. |
 | [`docs/patching.md`](./docs/patching.md) | Full deploy procedure: extract `app.js`, run the script, build image, `docker compose`, checks, pitfalls. |
 
-The checked-in `Patched_file/docker-patch/app.js` is a **large** reference bundle; you can stop tracking it and rely on extracting from the image each time—see [`.gitignore`](./.gitignore).
+The checked-in `Patched_file/docker-patch/app.js` is a **large** reference bundle; you can stop tracking it and rely on extracting from the image each time - see [`.gitignore`](./.gitignore).
 
 ---
 

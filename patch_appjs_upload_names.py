@@ -2,16 +2,16 @@
 """
 Патч Rocket.Chat app.js (~8.3.x):
 
-1) uploadsOnValidate — как раньше: транслит кириллицы, пробелы/мусор → дефис, update в коллекцию.
+1) uploadsOnValidate - как раньше: транслит кириллицы, пробелы/мусор - дефис, update в коллекцию.
 
 2) sendFileMessage: после Uploads.updateFileComplete(...) клиент может перезаписать name;
-   перед сборкой attachment снова применяем ту же санитизацию к file.name — иначе в UI «title»
+   перед сборкой attachment снова применяем ту же санитизацию к file.name - иначе в UI «title»
    остаётся с русскими символами (как у тебя на скрине).
 
-3) visitor livechat отправка файла — санитизация перед build attachment.
+3) visitor livechat отправка файла - санитизация перед build attachment.
 
 Повторный запуск безопасен: пропускает уже изменённые блоки по маркерам.
-Исходный файл — vanilla с образа тем же скриптом что и патч версии образа.
+Исходный файл - vanilla с образа тем же скриптом что и патч версии образа.
 """
 
 from __future__ import annotations
