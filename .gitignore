@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Очень большой бандл: при желании держать в репо только Dockerfile и скрипты патча — раскомментируйте:
+# Patched_file/docker-patch/app.js
