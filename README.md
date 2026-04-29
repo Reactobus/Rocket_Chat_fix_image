@@ -19,6 +19,8 @@ This repo ships a **small server-side patch** to the bundled `app.js`: translite
 
 Old messages keep their stored titles; **send a new file** to verify after deploy.
 
+If you add before/after screenshots, drop them under `docs/images/` and link them here (pull requests welcome).
+
 ---
 
 ## What’s in the box
