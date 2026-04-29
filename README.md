@@ -19,7 +19,7 @@ git init
 git add -A
 git commit -m "Rocket.Chat 8.3.2: патч нормализации имён файлов (uploads, sendFileMessage, livechat)"
 git branch -M main
-git remote add origin https://github.com/<ваш_аккаунт>/Rocket_Chat_fix_image.git
+git remote add origin https://github.com/Reactobus/Rocket_Chat_fix_image.git
 git push -u origin main
 ```
 
