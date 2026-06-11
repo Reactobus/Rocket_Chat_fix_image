@@ -1,17 +1,21 @@
 #!/usr/bin/env python3
 """
-Патч Rocket.Chat app.js (~8.3.x):
+Патч Rocket.Chat app.js (~8.5.x):
 
 1) uploadsOnValidate - как раньше: транслит кириллицы, пробелы/мусор - дефис, update в коллекцию.
 
-2) sendFileMessage: после Uploads.updateFileComplete(...) клиент может перезаписать name;
-   перед сборкой attachment снова применяем ту же санитизацию к file.name - иначе в UI «title»
-   остаётся с русскими символами (как у тебя на скрине).
+2) parseFileIntoMessageAttachments (sendFileMessage): после Uploads.updateFileMetadata(...)
+   клиент может перезаписать name; перед сборкой attachment снова применяем ту же санитизацию
+   к file.name - иначе в UI «title» остаётся с русскими символами.
 
 3) visitor livechat отправка файла - санитизация перед build attachment.
 
 Повторный запуск безопасен: пропускает уже изменённые блоки по маркерам.
 Исходный файл - vanilla с образа тем же скриптом что и патч версии образа.
+
+История якорей: 8.3.2 — бандл с 6-пробельным отступом, "".concat(...) и
+Uploads.updateFileComplete; 8.5.0 — 4/8 пробелов, template literals,
+Uploads.updateFileMetadata в parseFileIntoMessageAttachments.
 """
 
 from __future__ import annotations
@@ -19,22 +23,22 @@ from __future__ import annotations
 import json
 import sys
 
-# ----- 1. Начало uploadsOnValidate в vanilla 8.3.2
-NEEDLE_UPLOADS = """      async uploadsOnValidate(file, options) {
+# ----- 1. Начало uploadsOnValidate в vanilla 8.5.0
+NEEDLE_UPLOADS = """    async uploadsOnValidate (file, options) {
         if (!file.type || !/^image\\/((x-windows-)?bmp|p?jpeg|png|gif|webp)$/.test(file.type)) {
-          return;
+            return;
         }"""
 
 MARK_SENDFILE_PATCH = "/* rc-patch: sendFileMessage sanitize file.name */"
 MARK_LIVECHAT_PATCH = "/* rc-patch: livechat visitor sanitize file.name */"
 
-# ----- 2. sendFileMessage / parseFileIntoMessageAttachments (ровно один такой блок в бандле 8.3.2)
-NEEDLE_UPDATE_COMPLETE = """      await Uploads.updateFileComplete(file._id, user._id, omit(file, '_id'));
-      const fileUrl = FileUpload.getPath("".concat(file._id, "/").concat(encodeURI(file.name || '')));"""
+# ----- 2. parseFileIntoMessageAttachments (ровно один такой блок в бандле 8.5.0)
+NEEDLE_UPDATE_COMPLETE = """    await Uploads.updateFileMetadata(file._id, user._id, safeMetadata);
+    const fileUrl = FileUpload.getPath(`${file._id}/${encodeURI(file.name || '')}`);"""
 
 # ----- 3. livechat visitor: ряд «const fileUrl = file.name && FileUpload...»
-NEEDLE_LIVECHAT = """      const fileUrl = file.name && FileUpload.getPath("".concat(file._id, "/").concat(encodeURI(file.name)));
-      const attachment = {
+NEEDLE_LIVECHAT = """    const fileUrl = file.name && FileUpload.getPath(`${file._id}/${encodeURI(file.name)}`);
+    const attachment = {
         title: file.name,"""
 
 
@@ -92,7 +96,7 @@ def js_json_map() -> str:
 
 def block_uploads_on_validate() -> str:
     jm = js_json_map()
-    return f"""      async uploadsOnValidate(file, options) {{
+    return f"""    async uploadsOnValidate (file, options) {{
         const CYR_MAP = {jm};
         const sanitizeUploadFileName = raw => {{
           if (typeof raw !== "string" || !raw) return raw;
@@ -124,7 +128,7 @@ def block_uploads_on_validate() -> str:
           file.name = normalizedUploadName;
         }}
         if (!file.type || !/^image\\/((x-windows-)?bmp|p?jpeg|png|gif|webp)$/.test(file.type)) {{
-          return;
+            return;
         }}"""
 
 
@@ -132,7 +136,7 @@ def block_iife_assign_file_name(mark_comment: str) -> str:
     """Перезаписать file.name (IIFE, свой CYR_MAP в каждой вставке)."""
     jm = js_json_map()
     return f"""{mark_comment}
-      file.name = (raw => {{
+    file.name = (raw => {{
         const CYR_MAP = {jm};
         if (typeof raw !== "string" || !raw) return raw;
         const src = raw.normalize("NFC").trim();
@@ -161,11 +165,11 @@ def block_iife_assign_file_name(mark_comment: str) -> str:
 
 def needle_sendfile_replace() -> str:
     return (
-        """      await Uploads.updateFileComplete(file._id, user._id, omit(file, '_id'));"""
+        """    await Uploads.updateFileMetadata(file._id, user._id, safeMetadata);"""
         + "\n"
         + block_iife_assign_file_name(MARK_SENDFILE_PATCH)
         + "\n"
-        + """      const fileUrl = FileUpload.getPath("".concat(file._id, "/").concat(encodeURI(file.name || '')));"""
+        + """    const fileUrl = FileUpload.getPath(`${file._id}/${encodeURI(file.name || '')}`);"""
     )
 
 
@@ -173,8 +177,8 @@ def needle_livechat_replace() -> str:
     return (
         block_iife_assign_file_name(MARK_LIVECHAT_PATCH)
         + "\n"
-        + """      const fileUrl = file.name && FileUpload.getPath("".concat(file._id, "/").concat(encodeURI(file.name)));
-      const attachment = {
+        + """    const fileUrl = file.name && FileUpload.getPath(`${file._id}/${encodeURI(file.name)}`);
+    const attachment = {
         title: file.name,"""
     )
 

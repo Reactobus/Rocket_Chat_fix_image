@@ -2,10 +2,10 @@
 
 Rocket.Chat shows the **client’s raw filename** on attachment headers (mobile and desktop). For non-ASCII names - Cyrillic, spaces, odd punctuation - that looks broken and is awkward to share.
 
-This repo ships a **small server-side patch** to the bundled `app.js`: transliterate Cyrillic to Latin, fold spaces and junk characters to hyphens, and keep **upload validation + image pipeline** intact. **Tested on Rocket.Chat `8.3.2`** (official `registry.rocket.chat/rocketchat/rocket.chat:8.3.2` image).
+This repo ships a **small server-side patch** to the bundled `app.js`: transliterate Cyrillic to Latin, fold spaces and junk characters to hyphens, and keep **upload validation + image pipeline** intact. **Tested on Rocket.Chat `8.5.0`** (official `registry.rocket.chat/rocketchat/rocket.chat:8.5.0` image); the script's `NEEDLE_*` anchors currently target the **8.5.0** bundle.
 
 **Suggested GitHub “About” line (copy-paste):**  
-`Server patch for Rocket.Chat Docker: normalize attachment filenames (Cyrillic - Latin). Works on 8.3.x bundle.`
+`Server patch for Rocket.Chat Docker: normalize attachment filenames (Cyrillic - Latin). Works on 8.5.x bundle.`
 
 **Topics to add:** `rocketchat`, `docker`, `upload`, `filename`, `i18n`, `nodejs`
 
@@ -46,7 +46,7 @@ The checked-in `Patched_file/docker-patch/app.js` is a **large** reference bundl
    python3 patch_appjs_upload_names.py /path/to/vanilla-app.js
    ```
 
-4. Put patched `app.js` next to the Dockerfile, build a derived image (e.g. `:8.3.2-patched`), point `docker-compose.yml` at it, recreate the `rocketchat` service. Use `docker build --no-cache` if the old layer masks a new `app.js`.
+4. Put patched `app.js` next to the Dockerfile, build a derived image (e.g. `:8.5.0-patched`), point `docker-compose.yml` at it, recreate the `rocketchat` service. Use `docker build --no-cache` if the old layer masks a new `app.js`.
 
 5. Confirm logs show `SERVER RUNNING`, then upload a **new** file with a messy name and check the attachment title.
 

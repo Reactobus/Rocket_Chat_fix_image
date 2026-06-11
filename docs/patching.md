@@ -2,7 +2,7 @@
 
 Use this when you run Rocket.Chat from Docker and want **normalized attachment filenames** (see the [root README](../README.md) for context).
 
-**Verified stack:** Rocket.Chat **8.3.2**, `patch_appjs_upload_names.py` with three anchored insertions: `uploadsOnValidate`, after `Uploads.updateFileComplete` in `sendFileMessage`, visitor livechat. Older messages in MongoDB are unchanged; test with a **new** upload.
+**Verified stack:** Rocket.Chat **8.5.0**, `patch_appjs_upload_names.py` with three anchored insertions: `uploadsOnValidate`, after `Uploads.updateFileMetadata` in `parseFileIntoMessageAttachments` (was `updateFileComplete` in `sendFileMessage` up to 8.3.x), visitor livechat. Older messages in MongoDB are unchanged; test with a **new** upload.
 
 ---
 
@@ -82,7 +82,7 @@ COPY app.js /app/bundle/programs/server/app/app.js
 Build:
 
 ```bash
-docker build -t <your-registry>/rocketchat/rocket.chat:8.3.2-patched .
+docker build -t <your-registry>/rocketchat/rocket.chat:8.5.0-patched .
 ```
 
 If `COPY app.js` was cached but you changed `app.js`, rebuild with **`docker build --no-cache`**.
@@ -111,6 +111,15 @@ docker compose up -d rocketchat --force-recreate
 | Patch “does nothing” on upgrade | Bundle layout changed; update `NEEDLE_*` in the script or re-locate hooks in the new `app.js`. |
 | Broken image previews / Sharp / EXIF | Full `uploadsOnValidate` was replaced or bundle isn’t vanilla - re-extract from the official image and patch only at the needles. |
 | Image still old after editing `app.js` | Rebuild with `--no-cache`. |
+| `grep` on `app.js` hangs / floods terminal | Bundle has megabyte-long minified lines; printing a matched line stalls the session. Locate anchors with a small Python helper (`data.find(needle)` + slice context) instead of `grep` with line output. `grep -c` is safe. |
+
+After patching, cheap sanity check with the bundled Node:
+
+```bash
+docker run --rm --entrypoint node \
+  -v /path/to/docker-patch-build/app.js:/check/app.js:ro \
+  registry.rocket.chat/rocketchat/rocket.chat:<TAG> --check /check/app.js
+```
 
 ---
 
@@ -124,3 +133,14 @@ docker compose up -d rocketchat --force-recreate
 ## Upgrade loop
 
 For each Rocket.Chat bump: `docker pull` new tag - extract fresh `app.js` - adjust script needles if needed - rebuild `-patched` image - update Compose - recreate container - verify.
+
+The patch script is **not** stored on the server - copy `patch_appjs_upload_names.py` from this repo into `docker-patch-build/` on each upgrade (`scp`), so the repo copy stays the single source of truth.
+
+### Bundle format history (needle reference)
+
+| Rocket.Chat | Bundle format | Hook 2 location |
+|-------------|---------------|-----------------|
+| 8.3.x | 6-space indent, `"".concat(...)` string building, `uploadsOnValidate(file, options)` | `sendFileMessage`, after `Uploads.updateFileComplete(file._id, user._id, ...)` |
+| 8.5.0 | 4/8-space indent, template literals `` `${file._id}/...` ``, `uploadsOnValidate (file, options)` (space before paren) | `parseFileIntoMessageAttachments`, after `Uploads.updateFileMetadata(file._id, user._id, safeMetadata)` |
+
+On the next bump, expect the needles to drift again: check all three anchors are **unique** (`count == 1`) in the fresh bundle before replacing, keep the image pipeline after the first `if (!file.type ...)` intact, and verify `this.getCollection()` is still used inside `uploadsOnValidate`.
