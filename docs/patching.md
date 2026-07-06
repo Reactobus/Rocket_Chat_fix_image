@@ -112,6 +112,8 @@ docker compose up -d rocketchat --force-recreate
 | Broken image previews / Sharp / EXIF | Full `uploadsOnValidate` was replaced or bundle isn’t vanilla - re-extract from the official image and patch only at the needles. |
 | Image still old after editing `app.js` | Rebuild with `--no-cache`. |
 | `grep` on `app.js` hangs / floods terminal | Bundle has megabyte-long minified lines; printing a matched line stalls the session. Locate anchors with a small Python helper (`data.find(needle)` + slice context) instead of `grep` with line output. `grep -c` is safe. |
+| Backup filename ends up without a date (empty `$(date)`) | Running `ssh host "... $(date +%Y%m%d) ..."` from Windows PowerShell expands `$(...)` **locally**, not on the server. Substitute the date **server-side** (single-quote the remote command, or `sudo mv` to the dated name in a separate `ssh host '...'` call). |
+| Verify command fails inside container (busybox) | `docker exec` runs against busybox; nested double quotes get mangled over `ssh "..."`. Use single-quoted remote commands and read the version from the `docker logs` `SERVER RUNNING` banner rather than `/api/info` (behind traefik it can return the cloud-sync shape without `version`). |
 
 After patching, cheap sanity check with the bundled Node:
 
