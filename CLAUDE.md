@@ -132,3 +132,32 @@ literals, хук №2 переехал `sendFileMessage`/`updateFileComplete` �
 - **Не коммитить/пушить без явного разрешения.** По завершении задачи — предложить commit + запись
   в журнал, но выполнять только по согласию (см. общие правила в `..\CLAUDE.md`).
 - **Бэкап MongoDB — обязательное условие** любых прод-изменений.
+
+---
+
+## 8. ClickUp: логирование выполненных задач
+
+Когда пользователь подтвердил, что **содержательная задача выполнена** — **предложить** занести её
+в ClickUp как завершённую (создавать после согласия, не молча; для мелочей не предлагать). Хук здесь
+не ставим (пассивный проект без `.claude/`) — это поведенческое правило.
+
+- **Токен:** Windows User-переменная `CLICKUP_TOKEN`, читать через PowerShell из реестра
+  `[Environment]::GetEnvironmentVariable("CLICKUP_TOKEN","User")` (в рамках сессии `$env:` её не видит).
+  Заголовок `Authorization: <token>` (без `Bearer`), база `https://api.clickup.com/api/v2`. В git/чат
+  не писать.
+- **Список по умолчанию:** `901216864844` («1.2 Infrastructure», workspace DCSH `43322895`).
+  **Статус:** `completed`. **Исполнитель (обязательно):** assignee = `99680630` (React Yankee).
+- **Формат:** краткий заголовок + подробное markdown-описание (`markdown_content`, по-русски): что
+  сделано, зачем, проверка.
+- **Создание:** POST `/list/901216864844/task`, тело `{name, markdown_content, status:"completed",
+  assignees:[99680630]}` (UTF-8). Проверить readback'ом: GET `/task/{id}` — статус `completed`,
+  assignee проставлен.
+- **Чек-лист (обязательно):** в каждую задачу — нативный ClickUp-чек-лист выполненных шагов (виджет
+  с галочками), не только описание. Пункты через API не сохраняют порядок → после создания выставлять
+  `orderindex` (0..N-1) и `resolved:true` отдельными PUT `/checklist/{clid}/checklist_item/{itemId}`.
+- **Поля, приоритет, связи, вложения:** на задаче проставлять кастомные поля Category (`Engineering`),
+  Infrastructure Component (затронутый узел), Implementation Date; Priority `PUT /task/{id} {priority:N}`
+  (1=Urgent..4=Low, инцидент/безопасность→2); связывать родственные задачи `POST /task/{A}/link/{B}`;
+  к инцидентам прикладывать доказательства `POST /task/{id}/attachment`. Проставление поля:
+  `POST /task/{id}/field/{field_id}` `{value:...}`. Точные id полей и полный рецепт — в каноническом
+  `mikrotik_expert/.claude/rules/clickup-logging.md` (единый стандарт для всех репозиториев).
