@@ -146,7 +146,7 @@ literals, хук №2 переехал `sendFileMessage`/`updateFileComplete` �
   Заголовок `Authorization: <token>` (без `Bearer`), база `https://api.clickup.com/api/v2`. В git/чат
   не писать.
 - **Список по умолчанию:** `901216864844` («1.2 Infrastructure», workspace DCSH `43322895`).
-  **Статус:** `completed`. **Исполнитель (обязательно):** assignee = `99680630` (React Yankee).
+  **Статус:** `completed`. **Исполнитель (обязательно):** assignee = `99680630` (Roman SysAdmin).
 - **Формат:** краткий заголовок + подробное markdown-описание (`markdown_content`, по-русски): что
   сделано, зачем, проверка.
 - **Создание:** POST `/list/901216864844/task`, тело `{name, markdown_content, status:"completed",
