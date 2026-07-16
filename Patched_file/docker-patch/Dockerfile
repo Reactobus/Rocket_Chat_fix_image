@@ -1,4 +1,4 @@
 # app.js должен соответствовать тегу базового образа (извлечь из того же image: docker create + docker cp).
-# Прод (2026-07): 8.6.0 с registry.rocket.chat.
-FROM registry.rocket.chat/rocketchat/rocket.chat:8.6.0
+# Прод (2026-07): 8.6.1 с registry.rocket.chat.
+FROM registry.rocket.chat/rocketchat/rocket.chat:8.6.1
 COPY app.js /app/bundle/programs/server/app/app.js

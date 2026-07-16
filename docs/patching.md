@@ -2,7 +2,7 @@
 
 Use this when you run Rocket.Chat from Docker and want **normalized attachment filenames** (see the [root README](../README.md) for context).
 
-**Verified stack:** Rocket.Chat **8.6.0** (anchors unchanged since 8.5.0), `patch_appjs_upload_names.py` with three anchored insertions: `uploadsOnValidate`, after `Uploads.updateFileMetadata` in `parseFileIntoMessageAttachments` (was `updateFileComplete` in `sendFileMessage` up to 8.3.x), visitor livechat. Older messages in MongoDB are unchanged; test with a **new** upload.
+**Verified stack:** Rocket.Chat **8.6.1** (anchors unchanged since 8.5.0), `patch_appjs_upload_names.py` with three anchored insertions: `uploadsOnValidate`, after `Uploads.updateFileMetadata` in `parseFileIntoMessageAttachments` (was `updateFileComplete` in `sendFileMessage` up to 8.3.x), visitor livechat. Older messages in MongoDB are unchanged; test with a **new** upload.
 
 ---
 
@@ -82,7 +82,7 @@ COPY app.js /app/bundle/programs/server/app/app.js
 Build:
 
 ```bash
-docker build -t <your-registry>/rocketchat/rocket.chat:8.6.0-patched .
+docker build -t <your-registry>/rocketchat/rocket.chat:8.6.1-patched .
 ```
 
 If `COPY app.js` was cached but you changed `app.js`, rebuild with **`docker build --no-cache`**.
@@ -114,6 +114,7 @@ docker compose up -d rocketchat --force-recreate
 | `grep` on `app.js` hangs / floods terminal | Bundle has megabyte-long minified lines; printing a matched line stalls the session. Locate anchors with a small Python helper (`data.find(needle)` + slice context) instead of `grep` with line output. `grep -c` is safe. |
 | Backup filename ends up without a date (empty `$(date)`) | Running `ssh host "... $(date +%Y%m%d) ..."` from Windows PowerShell expands `$(...)` **locally**, not on the server. Substitute the date **server-side** (single-quote the remote command, or `sudo mv` to the dated name in a separate `ssh host '...'` call). |
 | Verify command fails inside container (busybox) | `docker exec` runs against busybox; nested double quotes get mangled over `ssh "..."`. Use single-quoted remote commands and read the version from the `docker logs` `SERVER RUNNING` banner rather than `/api/info` (behind traefik it can return the cloud-sync shape without `version`). |
+| Backup is 0 bytes + stray `/dump` dir inside mongo container | Quoting collapsed: `ssh host '... sh -c "mongodump --archive --gzip" > f'` from PowerShell strips the inner double quotes, so `--archive --gzip` become args to `sh`, not `mongodump` -> it writes uncompressed BSON to `./dump/` in the container and the redirect captures nothing. Use **double-quoted outer / single-quoted inner**: `ssh host "... sh -c 'mongodump --archive --gzip' > f"`. Always check the resulting file size and that the log says `... to archive on stdout` (not `... to dump/...bson`); clean any stray `/dump` with `docker exec <mongo> sh -c 'rm -rf /dump'`. |
 
 After patching, cheap sanity check with the bundled Node:
 
@@ -143,6 +144,6 @@ The patch script is **not** stored on the server - copy `patch_appjs_upload_name
 | Rocket.Chat | Bundle format | Hook 2 location |
 |-------------|---------------|-----------------|
 | 8.3.x | 6-space indent, `"".concat(...)` string building, `uploadsOnValidate(file, options)` | `sendFileMessage`, after `Uploads.updateFileComplete(file._id, user._id, ...)` |
-| 8.5.0-8.6.0 | 4/8-space indent, template literals `` `${file._id}/...` ``, `uploadsOnValidate (file, options)` (space before paren) | `parseFileIntoMessageAttachments`, after `Uploads.updateFileMetadata(file._id, user._id, safeMetadata)` |
+| 8.5.0-8.6.1 | 4/8-space indent, template literals `` `${file._id}/...` ``, `uploadsOnValidate (file, options)` (space before paren) | `parseFileIntoMessageAttachments`, after `Uploads.updateFileMetadata(file._id, user._id, safeMetadata)` |
 
-The 8.5.0 needles applied cleanly to 8.6.0 (`patched ok (3 блок(ов))`, no edits). On the next bump, still expect possible drift: check all three anchors are **unique** (`count == 1`) in the fresh bundle before replacing, keep the image pipeline after the first `if (!file.type ...)` intact, and verify `this.getCollection()` is still used inside `uploadsOnValidate`.
+The 8.5.0 needles applied cleanly through 8.6.0 and 8.6.1 (`patched ok (3 блок(ов))`, no edits). On the next bump, still expect possible drift: check all three anchors are **unique** (`count == 1`) in the fresh bundle before replacing, keep the image pipeline after the first `if (!file.type ...)` intact, and verify `this.getCollection()` is still used inside `uploadsOnValidate`.
