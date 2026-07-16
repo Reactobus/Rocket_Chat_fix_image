@@ -17,7 +17,7 @@
 
 ## Алгоритм (по docs/patching.md)
 
-1. Бэкап MongoDB → `bck/rocketchat-before-<TO>-<YYYYMMDD>.dump.gz` (<размер>)
+1. Бэкап MongoDB → `bck/rocketchat-before-<TO>-<YYYYMMDD>.dump.gz` (<размер>); ротация — оставить 3 свежих (`ls -1t ... | tail -n +4 | xargs -r sudo rm -f`)
 2. `docker pull registry.rocket.chat/rocketchat/rocket.chat:<TO>`
 3. Извлечь vanilla `app.js` в `docker-patch-build/` (старый → `app.js.bak-<FROM>`)
 4. Скопировать репо-скрипт `patch_appjs_upload_names.py`, применить → `<результат>`

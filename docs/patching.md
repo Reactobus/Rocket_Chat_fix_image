@@ -36,6 +36,21 @@ Paths vary; adapt to your host layout and Compose file location.
 
 `mongodump` (or your usual backup) before stopping app services for long maintenance. Optionally save a copy of `docker-compose.yml` with the backup.
 
+Quoting matters (see Troubleshooting) - from Windows PowerShell use **double-quoted outer / single-quoted inner** and substitute the date **server-side**:
+
+```bash
+ssh <host> "sudo docker exec <mongo_container> sh -c 'mongodump --archive --gzip' > /tmp/rc-dump.gz"
+ssh <host> 'sudo mv /tmp/rc-dump.gz /home/docker/rocketchat/bck/rocketchat-before-<TO>-$(date +%Y%m%d).dump.gz'
+```
+
+Confirm the file is non-empty and the log says `... to archive on stdout` (not `... to dump/...bson`).
+
+**Retention: keep only the 3 newest backups.** After a successful backup, prune older ones:
+
+```bash
+ssh <host> "cd /home/docker/rocketchat/bck && ls -1t rocketchat-before-*.dump.gz | tail -n +4 | xargs -r sudo rm -f"
+```
+
 ### 3) Stop the app container
 
 Usually only the `rocketchat` service, not MongoDB:
